@@ -7,7 +7,7 @@ path = os.getcwd()
 WIDTH = 800
 HEIGHT = 700
 
-# this is to set random direction for every Fish object (also nemo and enemies as they inherit from Fish class)
+# this is to set random direction for every Fish object during __init__() (also nemo and enemies as they inherit from Fish class)
 directions = [LEFT, RIGHT]
 
 # font for text (LEVEL, TIMER, SCORE)
@@ -16,7 +16,7 @@ font = loadFont(path + "/data/bebas_neue.vlw")
 class Fish():
     def __init__(self, posX, posY, size, img, speed):
         
-        # the x and y coordinates of the obj, x and y seemed confusing so I added posX and posY
+        # the x and y coordinates of the obj, x and y seemed confusing so I've used posX and posY
         self.posX = posX
         self.posY = posY
         
@@ -26,25 +26,28 @@ class Fish():
         # instead of radius, i've called it size so that we can take this variable to compare nemo's size and enemies' size when they're near
         self.size = size
 
-        # this speed determines the addition for posX and posY when the obj moves around the screen, see mouseHandler()
+        # this speed determines the increment for posX and posY when the obj moves around the screen, see mouseHandler()
         self.speed = speed
         
         # initializing random direction for nemo and enemies
         self.direction = random.choice(directions)
         
         # this is to crop every characters image
-        # (like in super mario, there's one single image for mario and prof. crops it to show animation at every certain frameCount)
-        # for eg: the nemo_char.png has 5 nemos together
-        # so we generate a random position from 0 to 4 and then multiply this value with (total image size)/5, which is the size of individual character (nemo or enemy)
+        # like in super mario, there's one single image for mario and then prof. crops it to show movement animation at every certain frameCount
+        # for eg: in our game, the nemo_char.png has 5 nemos together
+        # so we generate a random position from 0 to 4 and then multiply this value with (total image size)/5 i.e. the size of individual character (nemo or enemy)
         self.cropStart = random.randint(0, 4)
     
     def display(self):
         
         # individual image size of our character (because we have 5 images in a single PNG)
+        # total image width / 5
         singleSize = self.img.width / 5
         
         # when frameCount % 5, we use the cropStart value to determine our start position (x1, y1) like (self.cropStart * singleSize, 0)
         if frameCount % 5 == 0 or frameCount == 1:
+            
+            # when cropStart reaches 5 we need to set it to 0 cuz 5 * singleSize is null
             self.cropStart += 1
             if self.cropStart >= 5:
                 self.cropStart = 0 
