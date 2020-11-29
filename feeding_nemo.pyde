@@ -73,11 +73,7 @@ class Player(Fish):
     def update(self):
         pass
     
-class Prey(Fish):
-    def __init__(self, posX, posY, size, img, speed):
-        Fish.__init__(self, posX, posY, size, img, speed)
-
-class Predator(Fish):
+class Enemy(Fish):
     def __init__(self, posX, posY, size, img, speed):
         Fish.__init__(self, posX, posY, size, img, speed)
 
@@ -198,6 +194,9 @@ def draw():
     
 #i was thinking press enter if you lose or win(to go to the next level or something)
 def keyPressed():
+    if keyCode == 32: # SPACEBAR
+        print("hello")
+        
     if keyCode == ENTER:
         """whichever function we use
         what this key will do: if game.alive increment level else game.alive = True
@@ -208,6 +207,8 @@ def keyPressed():
 
 # this is the main function that handles nemo's movement
 def mouseHandler():
+    
+    # addition: rotate() fish while moving towards the diagonals
     
     # to get the center co-ordinates of our nemo instead of getting top left coordinates
     playerCenterX = game.nemo.posX + game.nemo.size / 2
