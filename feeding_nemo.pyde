@@ -1,6 +1,6 @@
 add_library('minim')
 
-import random, os, datetime
+import random, os, datetime, math
 
 path = os.getcwd()
 
@@ -19,6 +19,8 @@ class Fish():
         # the x and y coordinates of the obj, x and y seemed confusing so I've used posX and posY
         self.posX = posX
         self.posY = posY
+        
+        self.rotation = 0
         
         # image path for nemo and enemies
         self.img = loadImage(path + "/images/" + img)
@@ -40,6 +42,10 @@ class Fish():
     
     def display(self):
         
+        playerCenterX = self.posX + self.size / 2
+        playerCenterY = self.posY + self.size / 2
+        self.rotation = math.atan2((mouseY - playerCenterY),(mouseX - playerCenterX))
+        
         # individual image size of our character (because we have 5 images in a single PNG)
         # total image width / 5
         singleSize = self.img.width / 5
@@ -53,17 +59,25 @@ class Fish():
                 self.cropStart = 0 
                 
         # checking the direction of our Fish (also nemo, enemies) and displaying them respectively
-        if self.direction == RIGHT:
-            pushMatrix()
-            scale(1, 1)
-            image(self.img, self.posX, self.posY, self.size, self.size, self.cropStart * singleSize, 0, self.cropStart * singleSize + singleSize, self.img.height)
-            popMatrix()
+        if abs(self.rotation) > (math.pi / 2):
+            self.direction = LEFT
         else:
-            pushMatrix()
+            self.direction = RIGHT
+            
+        pushMatrix()
+        imageMode(CENTER)
+        translate(self.posX, self.posY)
+        rotate(self.rotation)
+        
+        if self.direction == RIGHT:
+            scale(1, 1)
+            image(self.img, 0, 0, self.size, self.size, self.cropStart * singleSize, 0, self.cropStart * singleSize + singleSize, self.img.height)
+        else:
             scale(-1, 1)
-            image(self.img, -self.posX, self.posY, -self.size, self.size, self.cropStart * singleSize, 0, self.cropStart * singleSize + singleSize, self.img.height)
-            popMatrix()
-
+            image(self.img, 0, 0, -self.size, self.size, (self.cropStart * singleSize + singleSize), self.img.height, self.cropStart * singleSize, 0)
+            
+        popMatrix()
+        
 class Player(Fish):
     def __init__(self, posX, posY, size, img, speed):
         Fish.__init__(self, posX, posY, size, img, speed)
@@ -228,19 +242,14 @@ def mouseHandler():
         increment[1] = game.nemo.speed
     
     if (mouseX - playerCenterX) < (-1) * (game.nemo.size / 2):
-        game.nemo.direction = LEFT
         increment[0] = (-game.nemo.speed)
         
     elif (mouseX - playerCenterX) > (game.nemo.size / 2):
-        game.nemo.direction = RIGHT
         increment[0] = game.nemo.speed
         
     # checking if the player is within the game window
-    if game.nemo.posX + increment[0] < (game.w - game.nemo.size) and game.nemo.posX + increment[0] > 0:
+    if game.nemo.posX + increment[0] < (game.w - game.nemo.size / 2) and game.nemo.posX + increment[0] > game.nemo.size / 2:
         game.nemo.posX += increment[0]
         
-    if game.nemo.posY + increment[1] < (game.h - game.nemo.size) and game.nemo.posY + increment[1] > 0:
+    if game.nemo.posY + increment[1] < (game.h - game.nemo.size / 2) and game.nemo.posY + increment[1] > game.nemo.size / 2:
         game.nemo.posY += increment[1] 
-    
-    
-# mouseReleased() is not necessary as we removed game.playerMove
