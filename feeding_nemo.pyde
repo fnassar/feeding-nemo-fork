@@ -42,8 +42,7 @@ class Fish():
     
     def display(self):
         
-        playerCenterX = self.posX + self.size / 2
-        playerCenterY = self.posY + self.size / 2
+        playerCenterX, playerCenterY = self.getCenterCoordinates()
         self.rotation = math.atan2((mouseY - playerCenterY),(mouseX - playerCenterX))
         
         # individual image size of our character (because we have 5 images in a single PNG)
@@ -83,6 +82,9 @@ class Player(Fish):
         Fish.__init__(self, posX, posY, size, img, speed)
         
         self.alive = True
+    
+    def getCenterCoordinates(self):
+        return self.posX + self.size / 2, self.posY + self.size / 2
     
     def update(self):
         pass
@@ -225,8 +227,7 @@ def mouseHandler():
     # addition: rotate() fish while moving towards the diagonals
     
     # to get the center co-ordinates of our nemo instead of getting top left coordinates
-    playerCenterX = game.nemo.posX + game.nemo.size / 2
-    playerCenterY = game.nemo.posY + game.nemo.size / 2
+    playerCenterX, playerCenterY = game.nemo.getCenterCoordinates()
     
     # posX and posY increment values
     # increment will be the speed of Fish
