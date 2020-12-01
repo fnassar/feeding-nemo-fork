@@ -4,8 +4,8 @@ import random, os, datetime, math
 
 path = os.getcwd()
 
-WIDTH = 800
-HEIGHT = 700
+WIDTH = 1280
+HEIGHT = 795
 
 # this is to set random direction for every Fish object during __init__() (also nemo and enemies as they inherit from Fish class)
 directions = [LEFT, RIGHT]
@@ -40,7 +40,11 @@ class Fish():
         # so we generate a random position from 0 to 4 and then multiply this value with (total image size)/5 i.e. the size of individual character (nemo or enemy)
         self.cropStart = random.randint(0, 4)
     
+    def update():
+        pass
+    
     def display(self):
+        self.update()
         
         playerCenterX, playerCenterY = self.getCenterCoordinates()
         self.rotation = math.atan2((mouseY - playerCenterY),(mouseX - playerCenterX))
@@ -88,6 +92,17 @@ class Player(Fish):
     
     def update(self):
         pass
+        
+        # here i check for the bump with the tokens, remove token from list
+        for t in game.tokens:
+            if self.distance(t) <= self.size/2 + t.size/2:
+                game.tokens.remove(t)
+                game.score +=1
+                
+    
+    # this is for the distance between nemo and anything else instead of measuring it separately in every other class
+    def distance(self, target):
+        return ((self.posX - target.posX)**2 + (self.posY - target.posY)**2)**0.5
     
 class Enemy(Fish):
     def __init__(self, posX, posY, size, img, speed):
@@ -98,13 +113,29 @@ class Shark(Fish):
         Fish.__init__(self, posX, posY, size, img, speed)
 
 class Tokens():
-    def __init__(self):
-        self.x = random.randint(100, 1100)
-        self.y = random.randint(100, 620)
+    def __init__(self, x, y, img):
+        self.posX = x 
+        self.posY = y
+        self.img = loadImage(path + "/images/" + img+ ".png")
+        self.size = 30
+        self.cropStart = random.randint(1,23)
+        self.eaten = False
+
+    def display(self):
+        TokenSize = self.img.width / 23 # the sprite has 23 tokens so i divide by 23
+
+        if frameCount % 5 == 0 or frameCount == 1:
+            
+            self.cropStart += 1
+            if self.cropStart >= 23:
+                self.cropStart = 0
+
+        image(self.img, self.posX, self.posY, self.size, self.size, self.cropStart * TokenSize, 0, self.cropStart * TokenSize + TokenSize, self.img.height)
+        
+
         
 class Game():
     def __init__(self, w, h):
-        self.bgImage = loadImage(path + "/images/marine.jpg")
         
         self.w = w
         self.h = h
@@ -120,16 +151,16 @@ class Game():
         # the following line was here before. going through the code again, I realized it was unnecessary. I only used it for testing, so it's not required now
         # self.playerMove = {LEFT: False, RIGHT: False, UP: False, DOWN: False} 
         
-        self.nemo = Player(self.w/2, self.h/2, 80, "nemo_char.png", 3.2)
+        self.nemo = Player(self.w/2, self.h/2, 80, "nemo_char.png", 5)
         
         # to know which screen we're in, Main Menu, the Game, GameOver screen
         self.screen = 1
         
         #self.bg_music = player.loadFile(path + "/sounds/background.mp3")
         #self.bg_music.loop()
-        #self.tokens = []
-        #for i in range(10):
-        #    self.tokens.append(Tokens())
+        
+        self.tokens = []
+        
         #self.preys = []
         #for i in range(20):
         #    self.preys.append(Prey())
@@ -169,8 +200,18 @@ class Game():
             if mousePressed:
                 mouseHandler()
             
+            # the stars will apear every 25 seconds
+            # the frame count part is because frame rate is 60fps so more than just one would apear without it
+            if (floor((datetime.datetime.now() - self.start).total_seconds()) % 5 == 0) and frameCount % 60 == 0: 
+                self.tokens.append(Tokens(random.randint(100, self.w-100),random.randint(100, self.h-100),"tokens"))
+            print(len(self.tokens))
+            for i in range(len(self.tokens)):
+                self.tokens[i].display()
+            
+            
+            
         # x = 0
-        # cnt = 1 if paralex ill try to find a backround 
+        # cnt = 1 if paralex ill try to find a backround  
         # that will do that with a fixed front
         
         #for p in self.prey:
@@ -198,14 +239,60 @@ class Game():
     # for the MainMenu
     def mainMenu(self):
         pass
+
+
+class BackGround():
+    def __init__(self, w, h):
+        self.bgImage = loadImage(path + "/images/marine.png")
+        self.w = w
+        self.h = h
+        self.main = loadImage(path + "/images/2.png")
+        self.xShift = 0
+        self.other = []
+        for i in range(3):
+            self.other.append(loadImage(path + "/images/"+str(i)+".png"))
+        
+    def display(self):
+        cnt = 1
+        x = 0
+        
+        if game.nemo.direction == RIGHT:
+            self.xShift += 5
+        elif game.nemo.direction == LEFT: 
+            self.xShift -= 5
+        else:
+            self.xShift = 0
+        
+        for img in self.other:
+            
+            if cnt == 1:
+                x = self.xShift//3
+            elif cnt == 2:
+                x = self.xShift//2
+            else:
+                x = self.xShift        
+            
+            widthR = x % self.w
+            widthL = self.w - widthR
+            
+            #make the image wrap around
+            image(img, 0, 0, widthL, self.h, widthR, 0, self.w, self.h)
+            image(img, widthL, 0, widthR, self.h, 0, 0, widthR, self.h)
+            cnt += 1
+        
+
+        
     
 game = Game(WIDTH, HEIGHT)
+
+bg = BackGround(WIDTH, HEIGHT)
 
 def setup():
     size(WIDTH, HEIGHT)
 
 def draw():
-    background(game.bgImage)
+    background(bg.bgImage)
+    bg.display()
     game.update()
     
 #i was thinking press enter if you lose or win(to go to the next level or something)
