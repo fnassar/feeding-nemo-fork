@@ -149,7 +149,7 @@ class Game():
         # the following line was here before. going through the code again, I realized it was unnecessary. I only used it for testing, so it's not required now
         # self.playerMove = {LEFT: False, RIGHT: False, UP: False, DOWN: False} 
         
-        self.nemo = Player(self.w/2, self.h/2, 80, "nemo_char.png", 5)
+        self.nemo = Player(self.w/2, self.h/2, 80, "nemo_char.png", 10)
         
         self.bg = BackGround(self.w, self.h)
         
