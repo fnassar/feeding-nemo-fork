@@ -91,7 +91,6 @@ class Player(Fish):
         return self.posX + self.size / 2, self.posY + self.size / 2
     
     def update(self):
-        pass
         
         # here i check for the bump with the tokens, remove token from list
         for t in game.tokens:
@@ -112,25 +111,25 @@ class Shark(Fish):
     def __init__(self, posX, posY, size, img, speed):
         Fish.__init__(self, posX, posY, size, img, speed)
 
-class Tokens():
-    def __init__(self, x, y, img):
+class Token():
+    def __init__(self, x, y):
         self.posX = x 
         self.posY = y
         self.img = loadImage(path + "/images/tokens.png")
         self.size = 30
-        self.cropStart = random.randint(1,23)
+        
+        self.cropStart = random.randint(1, 23)
         self.eaten = False
 
     def display(self):
-        TokenSize = self.img.width / 23 # the sprite has 23 tokens so i divide by 23
+        tokenSize = self.img.width / 23 # the sprite has 23 tokens so i divide by 23
 
-        if frameCount % 1 == 0 or frameCount == 1:
+        if frameCount % 2 == 0 or frameCount == 1:
             self.cropStart += 1
             if self.cropStart >= 23:
                 self.cropStart = 0
-        image(self.img, self.posX, self.posY, self.size, self.size, self.cropStart * TokenSize, 0, self.cropStart * TokenSize + TokenSize, self.img.height)
-        
-
+                
+        image(self.img, self.posX, self.posY, self.size, self.size, self.cropStart * tokenSize, 0, self.cropStart * tokenSize + tokenSize, self.img.height)
         
 class Game():
     def __init__(self, w, h):
@@ -149,7 +148,7 @@ class Game():
         # the following line was here before. going through the code again, I realized it was unnecessary. I only used it for testing, so it's not required now
         # self.playerMove = {LEFT: False, RIGHT: False, UP: False, DOWN: False} 
         
-        self.nemo = Player(self.w/2, self.h/2, 80, "nemo_char.png", 10)
+        self.nemo = Player(self.w/2, self.h/2, 80, "nemo_char.png", 5)
         
         self.bg = BackGround(self.w, self.h)
         
@@ -179,11 +178,11 @@ class Game():
             
             # the stars will apear every 25 seconds
             # the frame count part is because frame rate is 60fps so more than just one would apear without it
-            if (floor((datetime.datetime.now() - self.start).total_seconds()) % 5 == 0) and (frameCount % 20 == 0 or frameCount == 1): 
-                self.tokens.append(Tokens(random.randint(100, self.w-100),random.randint(100, self.h-100),"tokens"))
-            print(len(self.tokens))
-            for i in range(len(self.tokens)):
-                self.tokens[i].display()
+            if (floor((datetime.datetime.now() - self.start).total_seconds()) % 10 == 0) and (frameCount % 20 == 0 or frameCount == 1) and len(self.tokens) <= 10: 
+                self.tokens.append(Token(random.randint(100, self.w - 100), random.randint(100, self.h - 100)))
+
+            for token in self.tokens:
+                token.display()
             
             # LEVEL, TIMER and SCORE
             textFont(font)
@@ -208,22 +207,12 @@ class Game():
             # if we use mousePressed() at the end, it'll trigger the function just once
             if mousePressed:
                 mouseHandler()
-            
-            
-            
-            
-        # x = 0
-        # cnt = 1 if paralex ill try to find a backround  
-        # that will do that with a fixed front
-        
+
         #for p in self.prey:
         #    p.display()
 
         #for p2 in self.predators:
         #    p2.display()
-        
-        #for t in self.tokens:
-        #    t.display()
         
     # to get the TIMER format (M:S)
     def getTimer(self, seconds):
@@ -248,15 +237,14 @@ class BackGround():
         self.bgImage = loadImage(path + "/images/marine.png")
         self.w = w
         self.h = h
-        self.main = loadImage(path + "/images/2.png")
+        
         self.xShift = 0
-        self.other = []
-        for i in range(3,0,-1):
-            self.other.append(loadImage(path + "/images/"+str(i)+".png"))
+        
+        self.otherImages = []
+        for i in range(3, 0, -1):
+            self.otherImages.append(loadImage(path + "/images/" + str(i) + ".png"))
         
     def display(self):
-        cnt = 1
-        x = 0
         
         if game.nemo.direction == RIGHT:
             self.xShift += 2
@@ -265,11 +253,12 @@ class BackGround():
         else:
             self.xShift = 0
         
-        for img in self.other:
-            
-            if cnt == 1:
+        count = 1
+        x = 0
+        for img in self.otherImages:
+            if count == 1:
                 x = self.xShift//3
-            elif cnt == 2:
+            elif count == 2:
                 x = self.xShift//2
             else:
                 x = self.xShift        
@@ -278,15 +267,13 @@ class BackGround():
             widthL = self.w - widthR
             
             #make the image wrap around
+            imageMode(CORNER)
             image(img, 0, 0, widthL, self.h, widthR, 0, self.w, self.h)
             image(img, widthL, 0, widthR, self.h, 0, 0, widthR, self.h)
-            cnt += 1
-        
-
-        
+            
+            count += 1
     
 game = Game(WIDTH, HEIGHT)
-
 
 def setup():
     size(WIDTH, HEIGHT)
