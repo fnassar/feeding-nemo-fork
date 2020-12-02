@@ -251,7 +251,7 @@ class BackGround():
         self.main = loadImage(path + "/images/2.png")
         self.xShift = 0
         self.other = []
-        for i in range(3):
+        for i in range(3,0,-1):
             self.other.append(loadImage(path + "/images/"+str(i)+".png"))
         
     def display(self):
@@ -259,9 +259,9 @@ class BackGround():
         x = 0
         
         if game.nemo.direction == RIGHT:
-            self.xShift += 5
+            self.xShift += 2
         elif game.nemo.direction == LEFT: 
-            self.xShift -= 5
+            self.xShift -= 2
         else:
             self.xShift = 0
         
