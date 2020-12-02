@@ -116,7 +116,7 @@ class Tokens():
     def __init__(self, x, y, img):
         self.posX = x 
         self.posY = y
-        self.img = loadImage(path + "/images/" + img+ ".png")
+        self.img = loadImage(path + "/images/tokens.png")
         self.size = 30
         self.cropStart = random.randint(1,23)
         self.eaten = False
@@ -124,12 +124,10 @@ class Tokens():
     def display(self):
         TokenSize = self.img.width / 23 # the sprite has 23 tokens so i divide by 23
 
-        if frameCount % 5 == 0 or frameCount == 1:
-            
+        if frameCount % 1 == 0 or frameCount == 1:
             self.cropStart += 1
             if self.cropStart >= 23:
                 self.cropStart = 0
-
         image(self.img, self.posX, self.posY, self.size, self.size, self.cropStart * TokenSize, 0, self.cropStart * TokenSize + TokenSize, self.img.height)
         
 
@@ -153,6 +151,8 @@ class Game():
         
         self.nemo = Player(self.w/2, self.h/2, 80, "nemo_char.png", 5)
         
+        self.bg = BackGround(self.w, self.h)
+        
         # to know which screen we're in, Main Menu, the Game, GameOver screen
         self.screen = 1
         
@@ -174,7 +174,16 @@ class Game():
             self.mainMenu()
             
         elif self.screen == 1 and self.nemo.alive:
+            self.bg.display()
             self.nemo.display()
+            
+            # the stars will apear every 25 seconds
+            # the frame count part is because frame rate is 60fps so more than just one would apear without it
+            if (floor((datetime.datetime.now() - self.start).total_seconds()) % 5 == 0) and (frameCount % 20 == 0 or frameCount == 1): 
+                self.tokens.append(Tokens(random.randint(100, self.w-100),random.randint(100, self.h-100),"tokens"))
+            print(len(self.tokens))
+            for i in range(len(self.tokens)):
+                self.tokens[i].display()
             
             # LEVEL, TIMER and SCORE
             textFont(font)
@@ -200,13 +209,6 @@ class Game():
             if mousePressed:
                 mouseHandler()
             
-            # the stars will apear every 25 seconds
-            # the frame count part is because frame rate is 60fps so more than just one would apear without it
-            if (floor((datetime.datetime.now() - self.start).total_seconds()) % 5 == 0) and frameCount % 60 == 0: 
-                self.tokens.append(Tokens(random.randint(100, self.w-100),random.randint(100, self.h-100),"tokens"))
-            print(len(self.tokens))
-            for i in range(len(self.tokens)):
-                self.tokens[i].display()
             
             
             
@@ -285,14 +287,12 @@ class BackGround():
     
 game = Game(WIDTH, HEIGHT)
 
-bg = BackGround(WIDTH, HEIGHT)
 
 def setup():
     size(WIDTH, HEIGHT)
 
 def draw():
-    background(bg.bgImage)
-    bg.display()
+    background(game.bg.bgImage)
     game.update()
     
 #i was thinking press enter if you lose or win(to go to the next level or something)
