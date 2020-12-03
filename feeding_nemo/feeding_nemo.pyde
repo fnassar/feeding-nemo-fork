@@ -56,6 +56,8 @@ class Fish():
         # individual image size of our character (because we have 5 images in a single PNG)
         # total image width / 5
         singleSize = self.img.width / self.imageCount
+        ratio = float(self.img.height)/float(singleSize)
+        print(ratio)
         
         # when frameCount % 5, we use the cropStart value to determine our start position (x1, y1) like (self.cropStart * singleSize, 0)
         if frameCount % 5 == 0 or frameCount == 1:
@@ -78,10 +80,10 @@ class Fish():
         
         if self.direction == RIGHT:
             scale(1, 1)
-            image(self.img, 0, 0, self.size, self.size, self.cropStart * singleSize, 0, self.cropStart * singleSize + singleSize, self.img.height)
+            image(self.img, 0, 0, self.size, self.size * ratio, self.cropStart * singleSize, 0, self.cropStart * singleSize + singleSize, self.img.height)
         else:
             scale(-1, 1)
-            image(self.img, 0, 0, -self.size, self.size, (self.cropStart * singleSize + singleSize), self.img.height, self.cropStart * singleSize, 0)
+            image(self.img, 0, 0, -self.size, self.size * ratio, (self.cropStart * singleSize + singleSize), self.img.height, self.cropStart * singleSize, 0)
             
         popMatrix()
         
@@ -142,6 +144,25 @@ class Shark(Enemy):
         self.visibleTimeStamp = 0
         
         self.sound = audio.loadFile(path + "/audio/shark.mp3")
+    
+    def update(self):
+        
+        if dist(self.posX, self.posY, game.nemo.posX, game.nemo.posY) < self.size / 2 + game.nemo.size / 3:
+            if self.size > game.nemo.size:
+                game.nemo.alive = False
+            else:
+                game.nemo.eat.rewind()
+                game.nemo.eat.play()
+                game.score += 10
+                game.preys.remove(self)
+
+        self.increment[0] = -self.speed * 2
+
+        self.increment[1] = 0
+        
+        self.posX += self.increment[0]
+        self.posY += self.increment[1]
+
 
 class Token():
     def __init__(self, x, y):
@@ -189,7 +210,7 @@ class Game():
         # the following line was here before. going through the code again, I realized it was unnecessary. I only used it for testing, so it's not required now
         # self.playerMove = {LEFT: False, RIGHT: False, UP: False, DOWN: False} 
         
-        self.nemo = Player(200, 200, 80 if self.level == 1 else 100, "nemo.png", 4)
+        self.nemo = Player(200, 200, 90 if self.level == 1 else 110, "nemo.png", 4)
         
         self.bg = Background(self.w, self.h)
         
@@ -211,7 +232,7 @@ class Game():
         for i in range(5):
             self.predators.append(Enemy(random.randint(300, self.w - 100), random.randint(50, self.h - 50), self.nemo.size * 1.5, "predator.png", random.uniform(1.5, 2.2), 9))
 
-        self.shark = Shark(random.randint(300, self.w - 100), random.randint(50, self.h - 50), self.nemo.size * 1.8, "shark" + str(self.level) + ".png", random.uniform(1.5, 2.2), 8 if self.level == 2 else 6)
+        self.shark = Shark(self.w, random.randint(50, self.h - 50), self.nemo.size * 4, "shark.png", random.uniform(1.5, 2.2), 8 if self.level == 2 else 6)
         
         global gameStarted
         if not gameStarted:
@@ -251,14 +272,17 @@ class Game():
             for otherFish in self.preys + self.predators:
                 otherFish.display()
                 
-            if timeSpent % 30 == 0 and timeSpent != 0 and timeSpent != self.shark.visibleTimeStamp:
-                print("shark")
-                self.shark.inGame = not self.shark.inGame
+            if timeSpent % 30 == 0and timeSpent != 0: # and timeSpent != self.shark.visibleTimeStamp:
+                self.shark.inGame = True
                 self.shark.visibleTimeStamp = timeSpent
                 
                 if self.shark.inGame:
                     self.shark.sound.rewind()
                     self.shark.sound.loop()
+            
+            elif self.shark.posX <= 0:
+                self.shark.inGame = False
+                self.shark = Shark(self.w, random.randint(50, self.h - 50), self.nemo.size * 3, "shark.png", random.uniform(1.5, 2.2), 8 if self.level == 2 else 6)
                 
             if self.shark.inGame:
                 self.shark.display()
