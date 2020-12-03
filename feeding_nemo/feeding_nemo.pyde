@@ -170,6 +170,9 @@ class Game():
         
         self.score = 0
         
+        self.keyHandler = {32:False, 13:False, 27:False}
+
+        
         # this is for the timer, we take the datetime value during __init__ and then on every frame we check time diffrence in seconds
         # then we use the getTimer() function inside Game class to get the timer format in M:S
         self.start = datetime.datetime.now()
@@ -190,34 +193,39 @@ class Game():
         #self.bg_music.loop()
         
         self.tokens = []
+        self.npreys = 15
         
         fishCount = [6, 5, 5, 6, 6]
         self.preys = []
-        for i in range(15):
+        for i in range(self.npreys):
             fish = random.randint(0, 4)
-            self.preys.append(Enemy(random.randint(100, self.w - 100), random.randint(100, self.h - 100), self.nemo.size / 2, "fish" + str(fish + 1) + ".png", random.uniform(1.5, 3), fishCount[fish]))
+            self.preys.append(Enemy(random.randint(100, self.w - 100), random.randint(50, self.h - 50), self.nemo.size / 2, "fish" + str(fish + 1) + ".png", random.uniform(1.5, 3), fishCount[fish]))
                               
         self.predators = []
         for i in range(5):
-            self.preys.append(Enemy(random.randint(300, self.w - 100), random.randint(300, self.h - 100), self.nemo.size * 1.05, "predator.png", random.uniform(1.5, 2.2), 9))
+            self.preys.append(Enemy(random.randint(300, self.w - 100), random.randint(50, self.h - 50), self.nemo.size * 1.5, "predator.png", random.uniform(1.5, 2.2), 9))
             
         self.background = audio.loadFile(path + "/audio/background.mp3")
         self.background.loop()
         
-        #for i in range(20):
-        #    self.preys.append(Prey())
-        #self.predators = []
-        #for i in range(5):
-        #    self.predators.append(Predator())
-        #self.keyHandler = {ENTER:False, ESC:False}
         
     def update(self):
         if self.screen == 0:
             self.mainMenu()
             
+        elif self.screen == 2:
+            textAlign(CENTER)
+            textMode(CENTER)
+            textSize(70)
+            text("WINN!!", self.w / 2, self.h / 2)
+            
         elif self.screen == 1 and self.nemo.alive:
             self.bg.display()
             self.nemo.display()
+            
+            #check for win or level end (idky 5 but thats how it works so :\)
+            if len(self.preys) <= 5:
+                self.screen = 2
             
             # the stars will apear every 25 seconds
             # the frame count part is because frame rate is 60fps so more than just one would apear without it
@@ -254,6 +262,7 @@ class Game():
             # if we use mousePressed() at the end, it'll trigger the function just once
             if mousePressed:
                 mouseHandler()
+                
         
         else:
             textAlign(CENTER)
@@ -261,11 +270,11 @@ class Game():
             textSize(70)
             text("GAME OVER", self.w / 2, self.h / 2)
             
-        #for p in self.prey:
-        #    p.display()
-
-        #for p2 in self.predators:
-        #    p2.display()
+            if self.keyHandler[32] == True:
+                self.screen = 1 
+                global game
+                game = Game(WIDTH, HEIGHT)
+            
         
     # to get the TIMER format (M:S)
     def getTimer(self, seconds):
@@ -337,14 +346,16 @@ def draw():
     
 #i was thinking press enter if you lose or win(to go to the next level or something)
 def keyPressed():
-    if keyCode == 32: # SPACEBAR
-        print("hello")
+    if keyCode == 32: #and game.nemo.alive == False: # SPACEBAR
+        print("hello space")
+        game.keyHandler[32] = True
         
-    if keyCode == ENTER:
-        """whichever function we use
-        what this key will do: if game.alive increment level else game.alive = True
-        game.keyHandler[ENTER] = True"""
-    if keyCode == ESC:
+    if keyCode == 13:# ENTER
+        print("hello enter")
+        game.keyHandler[13] = True
+    
+    if keyCode == 27: #ESC
+        print("hello esc")
         """end game? change game.alive to False basically 
         we don't have to use it it's just an option"""
 
