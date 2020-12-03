@@ -269,6 +269,8 @@ class Game():
             textMode(CENTER)
             textSize(70)
             text("GAME OVER", self.w / 2, self.h / 2)
+            textSize(25)
+            text("Press SPACE to restart", self.w / 2, (self.h / 2)+ 50)
             
             if self.keyHandler[32] == True:
                 self.screen = 1 
