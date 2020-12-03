@@ -14,11 +14,12 @@ directions = [LEFT, RIGHT]
 font = loadFont(path + "/data/bebas_neue.vlw")
 
 class Fish():
-    def __init__(self, posX, posY, size, img, speed):
+    def __init__(self, posX, posY, size, img, speed, frames):
         
         # the x and y coordinates of the obj, x and y seemed confusing so I've used posX and posY
         self.posX = posX
         self.posY = posY
+        self.frames = frames
         
         self.rotation = 0
         
@@ -50,15 +51,15 @@ class Fish():
         self.rotation = math.atan2((mouseY - playerCenterY),(mouseX - playerCenterX))
         
         # individual image size of our character (because we have 5 images in a single PNG)
-        # total image width / 5
-        singleSize = self.img.width / 5
+        # total image width / self.frames
+        singleSize = self.img.width / self.frames
         
         # when frameCount % 5, we use the cropStart value to determine our start position (x1, y1) like (self.cropStart * singleSize, 0)
         if frameCount % 5 == 0 or frameCount == 1:
             
             # when cropStart reaches 5 we need to set it to 0 cuz 5 * singleSize is null
             self.cropStart += 1
-            if self.cropStart >= 5:
+            if self.cropStart >= self.frames:
                 self.cropStart = 0 
                 
         # checking the direction of our Fish (also nemo, enemies) and displaying them respectively
@@ -82,8 +83,8 @@ class Fish():
         popMatrix()
         
 class Player(Fish):
-    def __init__(self, posX, posY, size, img, speed):
-        Fish.__init__(self, posX, posY, size, img, speed)
+    def __init__(self, posX, posY, size, img, speed, frames):
+        Fish.__init__(self, posX, posY, size, img, speed, frames)
         
         self.alive = True
     
@@ -104,12 +105,12 @@ class Player(Fish):
         return ((self.posX - target.posX)**2 + (self.posY - target.posY)**2)**0.5
     
 class Enemy(Fish):
-    def __init__(self, posX, posY, size, img, speed):
-        Fish.__init__(self, posX, posY, size, img, speed)
+    def __init__(self, posX, posY, size, img, speed, frames):
+        Fish.__init__(self, posX, posY, size, img, speed, frames)
 
 class Shark(Fish):
-    def __init__(self, posX, posY, size, img, speed):
-        Fish.__init__(self, posX, posY, size, img, speed)
+    def __init__(self, posX, posY, size, img, speed, frames):
+        Fish.__init__(self, posX, posY, size, img, speed, frames)
 
 class Token():
     def __init__(self, x, y):
