@@ -14,6 +14,8 @@ directions = [LEFT, RIGHT]
 font = loadFont(path + "/fonts/bebas_neue.vlw")
 audio = Minim(this)
 
+gameStarted = False
+
 class Fish():
     def __init__(self, posX, posY, size, img, speed):
         
@@ -108,7 +110,7 @@ class Enemy(Fish):
         
     def update(self):
         
-        if dist(self.posX, self.posY, game.nemo.posX, game.nemo.posY) < self.size / 2 + game.nemo.size / 2:
+        if dist(self.posX, self.posY, game.nemo.posX, game.nemo.posY) < self.size / 2 + game.nemo.size / 3:
             if self.size > game.nemo.size:
                 game.nemo.alive = False
             else:
@@ -132,9 +134,14 @@ class Enemy(Fish):
         self.posX += self.increment[0]
         self.posY += self.increment[1]
         
-class Shark(Fish):
-    def __init__(self, posX, posY, size, img, speed):
-        Fish.__init__(self, posX, posY, size, img, speed)
+class Shark(Enemy):
+    def __init__(self, posX, posY, size, img, speed, imageCount):
+        Enemy.__init__(self, posX, posY, size, img, speed, imageCount)
+        
+        self.inGame = False
+        self.visibleTimeStamp = 0
+        
+        self.sound = audio.loadFile(path + "/audio/shark.mp3")
 
 class Token():
     def __init__(self, x, y):
@@ -170,7 +177,7 @@ class Game():
         
         self.score = 0
         
-        self.keyHandler = {32:False, 13:False, 27:False}
+        self.keyHandler = {32: False, 13: False, 27: False}
 
         
         # this is for the timer, we take the datetime value during __init__ and then on every frame we check time diffrence in seconds
@@ -182,7 +189,7 @@ class Game():
         # the following line was here before. going through the code again, I realized it was unnecessary. I only used it for testing, so it's not required now
         # self.playerMove = {LEFT: False, RIGHT: False, UP: False, DOWN: False} 
         
-        self.nemo = Player(200, 200, 80, "nemo.png", 4)
+        self.nemo = Player(200, 200, 80 if self.level == 1 else 100, "nemo.png", 4)
         
         self.bg = Background(self.w, self.h)
         
@@ -193,27 +200,33 @@ class Game():
         #self.bg_music.loop()
         
         self.tokens = []
-        self.npreys = 15
         
         fishCount = [6, 5, 5, 6, 6]
         self.preys = []
-        for i in range(self.npreys):
+        for i in range(15):
             fish = random.randint(0, 4)
             self.preys.append(Enemy(random.randint(100, self.w - 100), random.randint(50, self.h - 50), self.nemo.size / 2, "fish" + str(fish + 1) + ".png", random.uniform(1.5, 3), fishCount[fish]))
                               
         self.predators = []
         for i in range(5):
-            self.preys.append(Enemy(random.randint(300, self.w - 100), random.randint(50, self.h - 50), self.nemo.size * 1.5, "predator.png", random.uniform(1.5, 2.2), 9))
-            
-        self.background = audio.loadFile(path + "/audio/background.mp3")
-        self.background.loop()
+            self.predators.append(Enemy(random.randint(300, self.w - 100), random.randint(50, self.h - 50), self.nemo.size * 1.5, "predator.png", random.uniform(1.5, 2.2), 9))
+
+        self.shark = Shark(random.randint(300, self.w - 100), random.randint(50, self.h - 50), self.nemo.size * 1.8, "shark" + str(self.level) + ".png", random.uniform(1.5, 2.2), 8 if self.level == 2 else 6)
         
+        global gameStarted
+        if not gameStarted:
+            self.background = audio.loadFile(path + "/audio/background.mp3")
+            self.background.loop()
+            gameStarted = True
+        
+        self.gameOverAudio = audio.loadFile(path + "/audio/game_over.mp3")
         
     def update(self):
         if self.screen == 0:
             self.mainMenu()
             
         elif self.screen == 2:
+            self.shark.sound.pause()
             textAlign(CENTER)
             textMode(CENTER)
             textSize(70)
@@ -223,20 +236,34 @@ class Game():
             self.bg.display()
             self.nemo.display()
             
-            #check for win or level end (idky 5 but thats how it works so :\)
-            if len(self.preys) <= 5:
+            if len(self.preys) == 0:
                 self.screen = 2
             
+            timeSpent = floor((datetime.datetime.now() - self.start).total_seconds())
             # the stars will apear every 25 seconds
             # the frame count part is because frame rate is 60fps so more than just one would apear without it
-            if (floor((datetime.datetime.now() - self.start).total_seconds()) % 10 == 0) and (frameCount % 20 == 0 or frameCount == 1) and len(self.tokens) <= 10: 
+            if (timeSpent % 10 == 0) and (frameCount % 20 == 0 or frameCount == 1) and len(self.tokens) <= 10: 
                 self.tokens.append(Token(random.randint(100, self.w - 100), random.randint(100, self.h - 100)))
 
             for token in self.tokens:
                 token.display()
                 
-            for prey in self.preys:
-                prey.display()
+            for otherFish in self.preys + self.predators:
+                otherFish.display()
+                
+            if timeSpent % 30 == 0 and timeSpent != 0 and timeSpent != self.shark.visibleTimeStamp:
+                print("shark")
+                self.shark.inGame = not self.shark.inGame
+                self.shark.visibleTimeStamp = timeSpent
+                
+                if self.shark.inGame:
+                    self.shark.sound.rewind()
+                    self.shark.sound.loop()
+                
+            if self.shark.inGame:
+                self.shark.display()
+            else:
+                self.shark.sound.pause()
                 
             # LEVEL, TIMER and SCORE
             textMode(CORNER)
@@ -263,20 +290,19 @@ class Game():
             if mousePressed:
                 mouseHandler()
                 
-        
         else:
+            self.shark.sound.pause()
+            self.gameOverAudio.play()
+            
             textAlign(CENTER)
             textMode(CENTER)
             textSize(70)
             text("GAME OVER", self.w / 2, self.h / 2)
             textSize(25)
-            text("Press SPACE to restart", self.w / 2, (self.h / 2)+ 50)
+            text("Press SPACE to restart", self.w / 2, (self.h / 2) + 50)
             
             if self.keyHandler[32] == True:
-                self.screen = 1 
-                global game
-                game = Game(WIDTH, HEIGHT)
-            
+                self.newGame()
         
     # to get the TIMER format (M:S)
     def getTimer(self, seconds):
@@ -291,6 +317,11 @@ class Game():
             
         return timeString
     
+    def newGame(self):
+        self.screen = 1
+        global game
+        game = Game(WIDTH, HEIGHT)
+        
     # for the MainMenu
     def mainMenu(self):
         pass
@@ -348,16 +379,14 @@ def draw():
     
 #i was thinking press enter if you lose or win(to go to the next level or something)
 def keyPressed():
-    if keyCode == 32: #and game.nemo.alive == False: # SPACEBAR
-        print("hello space")
+    if keyCode == 32: # and game.nemo.alive == False: # SPACEBAR
         game.keyHandler[32] = True
         
-    if keyCode == 13:# ENTER
-        print("hello enter")
+    if keyCode == 13: # ENTER
         game.keyHandler[13] = True
     
-    if keyCode == 27: #ESC
-        print("hello esc")
+    if keyCode == 27: # ESC
+        exit()
         """end game? change game.alive to False basically 
         we don't have to use it it's just an option"""
 
