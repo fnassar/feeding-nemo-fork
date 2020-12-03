@@ -11,7 +11,8 @@ HEIGHT = 795
 directions = [LEFT, RIGHT]
 
 # font for text (LEVEL, TIMER, SCORE)
-font = loadFont(path + "/data/bebas_neue.vlw")
+font = loadFont(path + "/fonts/bebas_neue.vlw")
+audio = Minim(this)
 
 class Fish():
     def __init__(self, posX, posY, size, img, speed):
@@ -47,18 +48,19 @@ class Fish():
         self.update()
         
         playerCenterX, playerCenterY = self.getCenterCoordinates()
-        self.rotation = math.atan2((mouseY - playerCenterY),(mouseX - playerCenterX))
-        
+        if self.__class__.__name__ == "Player":
+            self.rotation = math.atan2((mouseY - playerCenterY), (mouseX - playerCenterX))
+    
         # individual image size of our character (because we have 5 images in a single PNG)
         # total image width / 5
-        singleSize = self.img.width / 5
+        singleSize = self.img.width / self.imageCount
         
         # when frameCount % 5, we use the cropStart value to determine our start position (x1, y1) like (self.cropStart * singleSize, 0)
         if frameCount % 5 == 0 or frameCount == 1:
             
             # when cropStart reaches 5 we need to set it to 0 cuz 5 * singleSize is null
             self.cropStart += 1
-            if self.cropStart >= 5:
+            if self.cropStart >= self.imageCount:
                 self.cropStart = 0 
                 
         # checking the direction of our Fish (also nemo, enemies) and displaying them respectively
@@ -81,32 +83,55 @@ class Fish():
             
         popMatrix()
         
+    def getCenterCoordinates(self):
+        return self.posX + self.size / 2, self.posY + self.size / 2
+        
 class Player(Fish):
     def __init__(self, posX, posY, size, img, speed):
         Fish.__init__(self, posX, posY, size, img, speed)
         
+        self.imageCount = 8
         self.alive = True
-    
-    def getCenterCoordinates(self):
-        return self.posX + self.size / 2, self.posY + self.size / 2
+        
+        self.eat = audio.loadFile(path + "/audio/nemo_eat.mp3")
+        self.tokenEat = audio.loadFile(path + "/audio/token.mp3")
     
     def update(self):
-        
-        # here i check for the bump with the tokens, remove token from list
-        for t in game.tokens:
-            if self.distance(t) <= self.size/2 + t.size/2:
-                game.tokens.remove(t)
-                game.score +=1
-                
-    
-    # this is for the distance between nemo and anything else instead of measuring it separately in every other class
-    def distance(self, target):
-        return ((self.posX - target.posX)**2 + (self.posY - target.posY)**2)**0.5
+        pass
     
 class Enemy(Fish):
-    def __init__(self, posX, posY, size, img, speed):
+    def __init__(self, posX, posY, size, img, speed, imageCount):
         Fish.__init__(self, posX, posY, size, img, speed)
-
+        self.imageCount = imageCount
+        
+        self.increment = [self.speed, self.speed]
+        
+    def update(self):
+        
+        if dist(self.posX, self.posY, game.nemo.posX, game.nemo.posY) < self.size / 2 + game.nemo.size / 2:
+            if self.size > game.nemo.size:
+                game.nemo.alive = False
+            else:
+                game.nemo.eat.rewind()
+                game.nemo.eat.play()
+                game.score += 10
+                game.preys.remove(self)
+        
+        if (self.posX + self.size / 2 + self.speed) > game.w:
+            self.rotation = math.pi
+            self.increment[0] = -self.speed
+        elif (self.posX - self.size / 2 - self.speed) < 0:
+            self.rotation = 0
+            self.increment[0] = self.speed
+            
+        if (self.posY + self.size / 2 + self.speed) > game.h:
+            self.increment[1] = -self.speed
+        elif (self.posY - self.size / 2 - self.speed) < 0:
+            self.increment[1] = self.speed
+        
+        self.posX += self.increment[0]
+        self.posY += self.increment[1]
+        
 class Shark(Fish):
     def __init__(self, posX, posY, size, img, speed):
         Fish.__init__(self, posX, posY, size, img, speed)
@@ -115,7 +140,7 @@ class Token():
     def __init__(self, x, y):
         self.posX = x 
         self.posY = y
-        self.img = loadImage(path + "/images/tokens.png")
+        self.img = loadImage(path + "/images/token.png")
         self.size = 30
         
         self.cropStart = random.randint(1, 23)
@@ -130,6 +155,12 @@ class Token():
                 self.cropStart = 0
                 
         image(self.img, self.posX, self.posY, self.size, self.size, self.cropStart * tokenSize, 0, self.cropStart * tokenSize + tokenSize, self.img.height)
+        
+        if dist(self.posX, self.posY, game.nemo.posX, game.nemo.posY) <= (game.nemo.size / 2 + self.size / 2):
+            game.nemo.tokenEat.rewind()
+            game.nemo.tokenEat.play()
+            game.score += 1
+            game.tokens.remove(self)
         
 class Game():
     def __init__(self, w, h):
@@ -148,9 +179,9 @@ class Game():
         # the following line was here before. going through the code again, I realized it was unnecessary. I only used it for testing, so it's not required now
         # self.playerMove = {LEFT: False, RIGHT: False, UP: False, DOWN: False} 
         
-        self.nemo = Player(self.w/2, self.h/2, 80, "nemo_char.png", 5)
+        self.nemo = Player(200, 200, 80, "nemo.png", 4)
         
-        self.bg = BackGround(self.w, self.h)
+        self.bg = Background(self.w, self.h)
         
         # to know which screen we're in, Main Menu, the Game, GameOver screen
         self.screen = 1
@@ -160,7 +191,19 @@ class Game():
         
         self.tokens = []
         
-        #self.preys = []
+        fishCount = [6, 5, 5, 6, 6]
+        self.preys = []
+        for i in range(15):
+            fish = random.randint(0, 4)
+            self.preys.append(Enemy(random.randint(100, self.w - 100), random.randint(100, self.h - 100), self.nemo.size / 2, "fish" + str(fish + 1) + ".png", random.uniform(1.5, 3), fishCount[fish]))
+                              
+        self.predators = []
+        for i in range(5):
+            self.preys.append(Enemy(random.randint(300, self.w - 100), random.randint(300, self.h - 100), self.nemo.size * 1.05, "predator.png", random.uniform(1.5, 2.2), 9))
+            
+        self.background = audio.loadFile(path + "/audio/background.mp3")
+        self.background.loop()
+        
         #for i in range(20):
         #    self.preys.append(Prey())
         #self.predators = []
@@ -183,8 +226,12 @@ class Game():
 
             for token in self.tokens:
                 token.display()
-            
+                
+            for prey in self.preys:
+                prey.display()
+                
             # LEVEL, TIMER and SCORE
+            textMode(CORNER)
             textFont(font)
             fill(255)
             
@@ -207,7 +254,13 @@ class Game():
             # if we use mousePressed() at the end, it'll trigger the function just once
             if mousePressed:
                 mouseHandler()
-
+        
+        else:
+            textAlign(CENTER)
+            textMode(CENTER)
+            textSize(70)
+            text("GAME OVER", self.w / 2, self.h / 2)
+            
         #for p in self.prey:
         #    p.display()
 
@@ -232,7 +285,7 @@ class Game():
         pass
 
 
-class BackGround():
+class Background():
     def __init__(self, w, h):
         self.bgImage = loadImage(path + "/images/marine.png")
         self.w = w
