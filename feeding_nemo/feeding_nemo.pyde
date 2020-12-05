@@ -1,6 +1,6 @@
 add_library('minim')
 
-import random, os, datetime, math
+import random, os, datetime, math, socket, threading, sys
 
 path = os.getcwd()
 
@@ -16,6 +16,65 @@ audio = Minim(this)
 
 gameStarted = False
 
+class Network():
+    def __init__(self):
+        self.DISCONNECT_MSG = "##DISCONNECT##"
+        self.FORMAT = "utf-8"
+        
+        PORT = 4040
+        SERVER = "40.76.33.105"
+        self.ADDR = (SERVER, PORT)
+        
+        self.player = 0
+        self.scores = {1: "000", 2: "000", 3: "000"}
+        self.success = False
+        
+        self.serverFull = False
+    
+    def connect(self):
+        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client.connect(self.ADDR)
+        game.screen = 10
+        thread = threading.Thread(target = self.send, args = ("PLAYER_000:000",))
+        thread.start()
+    
+    def send(self, msg):
+        try:
+            message = msg.encode(self.FORMAT)
+            self.client.send(message)
+            
+            if self.player == 0:
+                res = self.client.recv(1).decode(self.FORMAT)
+        
+                if res == "F":
+                    self.serverFull = True
+                else:
+                    self.player = int(res)
+                    
+                    res = self.client.recv(16).decode(self.FORMAT)
+                    while res.strip() != "[NEMO.INITIATE]":
+                        res = self.client.recv(16).decode(self.FORMAT)
+                        
+                    self.success = True
+                    game.screen = 1
+                    game.start = datetime.datetime.now()
+            else:
+                res = self.client.recv(19).decode(self.FORMAT)
+                res = res.replace("[", "").replace("]", "")
+                
+                for s in res.split(","):
+                    singleData = s.split(":")
+                    player = int(singleData[0])
+                    score = singleData[1]
+                    self.scores[player] = score
+        except:
+            sys.exit()
+                
+    def updateScore(self):
+        data = "PLAYER_00" + str(self.player) + ":" + "0" * (3 - len(str(game.score))) + str(game.score)
+        thread = threading.Thread(target = self.send, args = (data,))
+        thread.start()
+        
 class Fish():
     def __init__(self, posX, posY, size, img, speed):
         
@@ -133,6 +192,10 @@ class Enemy(Fish):
                 game.nemo.eat.rewind()
                 game.nemo.eat.play()
                 game.score += 10
+                
+                if game.multiPlayer:
+                    game.network.updateScore()
+                    
                 game.preys.remove(self)
                 
 class Shark(Enemy):
@@ -179,6 +242,10 @@ class Token():
             game.nemo.tokenEat.rewind()
             game.nemo.tokenEat.play()
             game.score += 1
+            
+            if game.multiPlayer: # update score on network
+                game.network.updateScore()
+            
             game.tokens.remove(self)
         
 class Game():
@@ -187,28 +254,22 @@ class Game():
         self.w = w
         self.h = h
         
-        self.score = 0
-        
-        self.keyHandler = {32: False, 10: False, 27: False}
+        self.multiPlayer = False
+        self.network = None
+        self.keyHandler = {32: False, 10: False, 83: False, 77: False}
 
-        # this is for the timer, we take the datetime value during __init__ and then on every frame we check time diffrence in seconds
-        # then we use the getTimer() function inside Game class to get the timer format in M:S
-        self.start = datetime.datetime.now()
-        
-        self.level = 1
-        
-        # the following line was here before. going through the code again, I realized it was unnecessary. I only used it for testing, so it's not required now
-        # self.playerMove = {LEFT: False, RIGHT: False, UP: False, DOWN: False} 
-        
-        self.nemo = Player(200, 200, 90 if self.level == 1 else 110, "nemo.png", 4)
-        
-        self.bg = Background(self.w, self.h)
-        
         # to know which screen we're in, Main Menu, the Game, GameOver screen
         self.screen = 0
         
-        #self.bg_music = player.loadFile(path + "/sounds/background.mp3")
-        #self.bg_music.loop()
+        # this is for the timer, we take the datetime value during __init__ and then on every frame we check time diffrence in seconds
+        # then we use the getTimer() function inside Game class to get the timer format in M:S
+        self.score = 0
+        self.level = 1
+        
+        self.start = datetime.datetime.now()
+        self.nemo = Player(200, 200, 90 if self.level == 1 else 110, "nemo.png", 4)
+        
+        self.bg = Background(self.w, self.h)
         
         self.tokens = []
         
@@ -276,7 +337,6 @@ class Game():
                 
             # LEVEL, TIMER and SCORE
             textMode(CORNER)
-            textFont(font)
             fill(255)
             
             textAlign(RIGHT)
@@ -284,15 +344,38 @@ class Game():
             text("SCORE", self.w - 20, 40)
             
             textSize(22)
-            text(str(self.score), self.w - 20, 65)
-            
+            if self.multiPlayer:
+                count = 0
+                for s in self.network.scores:                    
+                    player = "YOU"
+                    if s != self.network.player:
+                        player = "P" + str(s)
+                        
+                    text(player + ": " + str(self.network.scores[s]), self.w - 20, 65 + count * 25)
+                    
+                    count += 1
+            else:
+                text(self.score, self.w - 20, 65)
+                
             textAlign(LEFT)
             textSize(30)
             text("LEVEL " + str(self.level), 20, 40)
             
             textSize(22)
             text(self.getTimer((datetime.datetime.now() - self.start).total_seconds()), 20, 65)
-                
+       
+        elif self.screen == 10:
+            textAlign(CENTER)
+            textMode(CENTER)
+            textSize(40)
+            
+            waitingTxt = "WAITING FOR OTHER PLAYERS TO JOIN..."
+            if self.network.serverFull:
+                waitingTxt = "SORRY, THE SERVER IS BUSY"
+            text(waitingTxt, self.w / 2, self.h / 2)
+            textSize(25)
+            text("Press ESC to exit", self.w / 2, (self.h / 2) + 30)
+            
         else:
             self.shark.sound.pause()
             self.gameOverAudio.play()
@@ -301,11 +384,13 @@ class Game():
             textMode(CENTER)
             textSize(70)
             text("GAME OVER", self.w / 2, self.h / 2)
-            textSize(25)
-            text("Press SPACE to restart", self.w / 2, (self.h / 2) + 50)
             
-            if self.keyHandler[32]:
-                self.newGame()
+            if not self.multiPlayer:
+                textSize(25)
+                text("Press SPACE to restart", self.w / 2, (self.h / 2) + 50)
+                
+                if self.keyHandler[32]:
+                    self.newGame()
         
     # to get the TIMER format (M:S)
     def getTimer(self, seconds):
@@ -331,9 +416,14 @@ class Game():
         imageMode(CENTER)
         image(self.mainMenuImg, self.w / 2, self.h / 2, self.w, self.h)
         
-        if self.keyHandler[10]:
+        if self.keyHandler[83]:
             self.screen = 1
             self.start = datetime.datetime.now()
+            
+        elif self.keyHandler[77]:
+            self.multiPlayer = True
+            self.network = Network()
+            self.network.connect()
 
 class Background():
     def __init__(self, w, h):
@@ -360,9 +450,9 @@ class Background():
         x = 0
         for img in self.otherImages:
             if count == 1:
-                x = self.xShift//3
+                x = self.xShift // 3
             elif count == 2:
-                x = self.xShift//2
+                x = self.xShift // 2
             else:
                 x = self.xShift        
             
@@ -380,39 +470,32 @@ game = Game(WIDTH, HEIGHT)
 
 def setup():
     size(WIDTH, HEIGHT)
+    textFont(font)
 
 def draw():
     background(game.bg.bgImage)
     game.update()
     
-#i was thinking press enter if you lose or win(to go to the next level or something)
 def keyPressed():
     if keyCode == 32: # and game.nemo.alive == False: # SPACEBAR
         game.keyHandler[32] = True
         
-    if keyCode == 10: # ENTER
+    elif keyCode == 10: # ENTER
         game.keyHandler[10] = True
     
-    if keyCode == 27: # ESC
-        exit()
-        """end game? change game.alive to False basically 
-        we don't have to use it it's just an option"""
+    elif keyCode == 83: # S or s
+        game.keyHandler[83] = True
+        
+    elif keyCode == 77: # M or m
+        game.keyHandler[77] = True
+        
+    elif keyCode == 27: # ESC
+        sys.exit()
 
-# this is the main function that handles nemo's movement
 def mouseHandler():
-    
-    # addition: rotate() fish while moving towards the diagonals
-    
-    # to get the center co-ordinates of our nemo instead of getting top left coordinates
     playerCenterX, playerCenterY = game.nemo.getCenterCoordinates()
     
-    # posX and posY increment values
-    # increment will be the speed of Fish
-    # that's why I've used speed inside the Fish class
-    # we can declare different speed for our nemo and other individual enemies as well as the shark
     increment = [0, 0]
-    
-    # if the mouse position is more than half of the nemo's size, we move Nemo, else it doesn't move
     if (mouseY - playerCenterY) < (-1) * (game.nemo.size / 2):
         increment[1] = -(game.nemo.speed)
         
@@ -425,7 +508,6 @@ def mouseHandler():
     elif (mouseX - playerCenterX) > (game.nemo.size / 2):
         increment[0] = game.nemo.speed
         
-    # checking if the player is within the game window
     if game.nemo.posX + increment[0] < (game.w - game.nemo.size / 2) and game.nemo.posX + increment[0] > game.nemo.size / 2:
         game.nemo.posX += increment[0]
         
