@@ -545,7 +545,7 @@ class Game():
                  
             img = loadImage(path + "/images/gameOver.png")
             imageMode(CORNER)
-            image(img,0,0)
+            image(img, 0, 0)
             
             if not self.multiPlayer:
                 textAlign(CENTER)
