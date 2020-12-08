@@ -275,13 +275,13 @@ class Game():
         
         fishCount = [6, 5, 5, 6, 6]
         self.preys = []
-        for i in range(1):
+        for i in range(15):
             fish = random.randint(0, 4)
             self.preys.append(Enemy(random.randint(100, self.w - 100), random.randint(50, self.h - 50), self.nemo.size / 2, "fish" + str(fish + 1) + ".png", random.uniform(1.5, 3), fishCount[fish]))
         
                               
         self.predators = []
-        for i in range(1):
+        for i in range(5):
             self.predators.append(Enemy(random.randint(300, self.w - 100), random.randint(50, self.h - 50), self.nemo.size * 1.5, "predator.png", random.uniform(1.5, 2.2), 9))
 
         self.shark = Shark(self.w, random.randint(50, self.h - 50), self.nemo.size * 3, "shark.png", random.uniform(1.5, 2.2), 6)
