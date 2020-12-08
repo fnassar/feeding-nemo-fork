@@ -1,11 +1,11 @@
 add_library('minim')
 
-import random, os, datetime, math
+import random, os, datetime, math, socket, threading, sys
 
 path = os.getcwd()
 
-WIDTH = 1280
-HEIGHT = 795
+WIDTH = 1100
+HEIGHT = 684
 
 # this is to set random direction for every Fish object during __init__() (also nemo and enemies as they inherit from Fish class)
 directions = [LEFT, RIGHT]
@@ -16,6 +16,65 @@ audio = Minim(this)
 
 gameStarted = False
 
+class Network():
+    def __init__(self):
+        self.DISCONNECT_MSG = "##DISCONNECT##"
+        self.FORMAT = "utf-8"
+        
+        PORT = 4040
+        SERVER = "40.76.33.105"
+        self.ADDR = (SERVER, PORT)
+        
+        self.player = 0
+        self.scores = {1: "000", 2: "000", 3: "000"}
+        self.success = False
+        
+        self.serverFull = False
+    
+    def connect(self):
+        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client.connect(self.ADDR)
+        game.screen = 10
+        thread = threading.Thread(target = self.send, args = ("PLAYER_000:000",))
+        thread.start()
+    
+    def send(self, msg):
+        try:
+            message = msg.encode(self.FORMAT)
+            self.client.send(message)
+            
+            if self.player == 0:
+                res = self.client.recv(1).decode(self.FORMAT)
+        
+                if res == "F":
+                    self.serverFull = True
+                else:
+                    self.player = int(res)
+                    
+                    res = self.client.recv(16).decode(self.FORMAT)
+                    while res.strip() != "[NEMO.INITIATE]":
+                        res = self.client.recv(16).decode(self.FORMAT)
+                        
+                    self.success = True
+                    game.screen = 1
+                    game.start = datetime.datetime.now()
+            else:
+                res = self.client.recv(19).decode(self.FORMAT)
+                res = res.replace("[", "").replace("]", "")
+                
+                for s in res.split(","):
+                    singleData = s.split(":")
+                    player = int(singleData[0])
+                    score = singleData[1]
+                    self.scores[player] = score
+        except:
+            sys.exit()
+                
+    def updateScore(self):
+        data = "PLAYER_00" + str(self.player) + ":" + "0" * (3 - len(str(game.score))) + str(game.score)
+        thread = threading.Thread(target = self.send, args = (data,))
+        thread.start()
+        
 class Fish():
     def __init__(self, posX, posY, size, img, speed):
         
@@ -43,9 +102,6 @@ class Fish():
         # so we generate a random position from 0 to 4 and then multiply this value with (total image size)/5 i.e. the size of individual character (nemo or enemy)
         self.cropStart = random.randint(0, 4)
     
-    def update():
-        pass
-    
     def display(self):
         self.update()
         
@@ -56,8 +112,7 @@ class Fish():
         # individual image size of our character (because we have 5 images in a single PNG)
         # total image width / 5
         singleSize = self.img.width / self.imageCount
-        ratio = float(self.img.height)/float(singleSize)
-        print(ratio)
+        ratio = float(self.img.height) / float(singleSize)
         
         # when frameCount % 5, we use the cropStart value to determine our start position (x1, y1) like (self.cropStart * singleSize, 0)
         if frameCount % 5 == 0 or frameCount == 1:
@@ -101,7 +156,8 @@ class Player(Fish):
         self.tokenEat = audio.loadFile(path + "/audio/token.mp3")
     
     def update(self):
-        pass
+        if mousePressed:
+            mouseHandler()
     
 class Enemy(Fish):
     def __init__(self, posX, posY, size, img, speed, imageCount):
@@ -111,15 +167,7 @@ class Enemy(Fish):
         self.increment = [self.speed, self.speed]
         
     def update(self):
-        
-        if dist(self.posX, self.posY, game.nemo.posX, game.nemo.posY) < self.size / 2 + game.nemo.size / 3:
-            if self.size > game.nemo.size:
-                game.nemo.alive = False
-            else:
-                game.nemo.eat.rewind()
-                game.nemo.eat.play()
-                game.score += 10
-                game.preys.remove(self)
+        self.check()
         
         if (self.posX + self.size / 2 + self.speed) > game.w:
             self.rotation = math.pi
@@ -135,18 +183,8 @@ class Enemy(Fish):
         
         self.posX += self.increment[0]
         self.posY += self.increment[1]
-        
-class Shark(Enemy):
-    def __init__(self, posX, posY, size, img, speed, imageCount):
-        Enemy.__init__(self, posX, posY, size, img, speed, imageCount)
-        
-        self.inGame = False
-        self.visibleTimeStamp = 0
-        
-        self.sound = audio.loadFile(path + "/audio/shark.mp3")
     
-    def update(self):
-        
+    def check(self):
         if dist(self.posX, self.posY, game.nemo.posX, game.nemo.posY) < self.size / 2 + game.nemo.size / 3:
             if self.size > game.nemo.size:
                 game.nemo.alive = False
@@ -154,15 +192,31 @@ class Shark(Enemy):
                 game.nemo.eat.rewind()
                 game.nemo.eat.play()
                 game.score += 10
+                
+                if game.multiPlayer:
+                    game.network.updateScore()
+                    
                 game.preys.remove(self)
-
-        self.increment[0] = -self.speed * 4
-
-        self.increment[1] = 0
+                
+class Shark(Enemy):
+    def __init__(self, posX, posY, size, img, speed, imageCount):
+        Enemy.__init__(self, posX, posY, size, img, speed, imageCount)
+        
+        self.inGame = False
+        
+        self.sound = audio.loadFile(path + "/audio/shark.mp3")
+    
+    def update(self):
+        self.check()
+        
+        self.increment = [-self.speed * 4, 0]
         
         self.posX += self.increment[0]
         self.posY += self.increment[1]
-
+        
+        if self.posX <= (-self.size / 2):
+            self.inGame = False
+            self.posX, self.posY = game.w + self.size / 2, random.randint(50, game.h - 50)
 
 class Token():
     def __init__(self, x, y):
@@ -188,6 +242,10 @@ class Token():
             game.nemo.tokenEat.rewind()
             game.nemo.tokenEat.play()
             game.score += 1
+            
+            if game.multiPlayer: # update score on network
+                game.network.updateScore()
+            
             game.tokens.remove(self)
         
 class Game():
@@ -196,43 +254,37 @@ class Game():
         self.w = w
         self.h = h
         
-        self.score = 0
-        
-        self.keyHandler = {32: False, 13: False, 27: False}
+        self.multiPlayer = False
+        self.network = None
+        self.keyHandler = {32: False, 10: False, 83: False, 77: False}
 
+        # to know which screen we're in, Main Menu, the Game, GameOver screen
+        self.screen = 0
         
         # this is for the timer, we take the datetime value during __init__ and then on every frame we check time diffrence in seconds
         # then we use the getTimer() function inside Game class to get the timer format in M:S
-        self.start = datetime.datetime.now()
-        
+        self.score = 0
         self.level = 1
         
-        # the following line was here before. going through the code again, I realized it was unnecessary. I only used it for testing, so it's not required now
-        # self.playerMove = {LEFT: False, RIGHT: False, UP: False, DOWN: False} 
-        
-        self.nemo = Player(200, 200, 90 if self.level == 1 else 110, "nemo.png", 4)
+        self.start = datetime.datetime.now()
+        self.nemo = Player(200, 200, 90, "nemo.png", 4) # if self.level == 1 else 130
         
         self.bg = Background(self.w, self.h)
-        
-        # to know which screen we're in, Main Menu, the Game, GameOver screen
-        self.screen = 1
-        
-        #self.bg_music = player.loadFile(path + "/sounds/background.mp3")
-        #self.bg_music.loop()
         
         self.tokens = []
         
         fishCount = [6, 5, 5, 6, 6]
         self.preys = []
-        for i in range(15):
+        for i in range(1):
             fish = random.randint(0, 4)
             self.preys.append(Enemy(random.randint(100, self.w - 100), random.randint(50, self.h - 50), self.nemo.size / 2, "fish" + str(fish + 1) + ".png", random.uniform(1.5, 3), fishCount[fish]))
+        
                               
         self.predators = []
-        for i in range(5):
+        for i in range(1):
             self.predators.append(Enemy(random.randint(300, self.w - 100), random.randint(50, self.h - 50), self.nemo.size * 1.5, "predator.png", random.uniform(1.5, 2.2), 9))
 
-        self.shark = Shark(self.w, random.randint(50, self.h - 50), self.nemo.size * 4, "shark.png", random.uniform(1.5, 2.2), 6)# 8 if self.level == 2 else
+        self.shark = Shark(self.w, random.randint(50, self.h - 50), self.nemo.size * 3, "shark.png", random.uniform(1.5, 2.2), 6)
         
         global gameStarted
         if not gameStarted:
@@ -242,16 +294,47 @@ class Game():
         
         self.gameOverAudio = audio.loadFile(path + "/audio/game_over.mp3")
         
+        self.mainMenuImg = loadImage(path + "/images/mainMenu.png")
+        self.level1Img = loadImage(path + "/images/level2.png")
+        self.level2Img = loadImage(path + "/images/GAMEEND.png")
+        
     def update(self):
         if self.screen == 0:
             self.mainMenu()
             
         elif self.screen == 2:
             self.shark.sound.pause()
-            textAlign(CENTER)
-            textMode(CENTER)
-            textSize(70)
-            text("WINN!!", self.w / 2, self.h / 2)
+            if self.level == 1:
+                imageMode(CORNER)
+                image(self.level1Img,0,0)
+                
+                self.nemo = Player(200, 200, 110, "nemo.png", 4)
+                                
+                self.preys = []
+                fishCount = [6, 5, 5, 6, 6]
+                for i in range(10):
+                    fish = random.randint(0, 4)
+                    self.preys.append(Enemy(random.randint(100, self.w - 100), random.randint(50, self.h - 50), self.nemo.size / 3, "fish" + str(fish + 1) + ".png", random.uniform(1.5, 3), fishCount[fish]))
+                    
+                for i in range(5):
+                    self.preys.append(Enemy(random.randint(300, self.w - 100), random.randint(50, self.h - 50), self.nemo.size * 1.5/2, "predator.png", random.uniform(1.5, 2.2), 9))
+                
+                self.predators = []
+                for i in range(3):
+                    self.predators.append(Enemy(random.randint(300, self.w - 100), random.randint(50, self.h - 50), self.nemo.size * 1.5, "predator2.png", random.uniform(1.5, 2.2), 8))
+
+                self.shark = Shark(self.w, random.randint(50, self.h - 50), self.nemo.size * 4, "shark.png", random.uniform(1.5, 2.2), 6)
+                if self.keyHandler[32] == True:
+                    self.level = 2
+                    self.screen = 1
+                
+            elif self.level == 2:
+                imageMode(CORNER)
+                image(self.level2Img,0,0)
+                if self.keyHandler[32]:
+                    self.screen = 0
+                
+            
             
         elif self.screen == 1 and self.nemo.alive:
             self.bg.display()
@@ -268,21 +351,14 @@ class Game():
 
             for token in self.tokens:
                 token.display()
-                
+    
             for otherFish in self.preys + self.predators:
                 otherFish.display()
-                
-            if timeSpent % 30 == 0and timeSpent != 0: # and timeSpent != self.shark.visibleTimeStamp:
+
+            if timeSpent % 30 == 0 and timeSpent != 0:
                 self.shark.inGame = True
-                self.shark.visibleTimeStamp = timeSpent
-                
-                if self.shark.inGame:
-                    self.shark.sound.rewind()
-                    self.shark.sound.loop()
-            
-            elif self.shark.posX <= 0:
-                self.shark.inGame = False
-                self.shark = Shark(self.w, random.randint(50, self.h - 50), self.nemo.size * 3, "shark.png", random.uniform(1.5, 2.2), 6)# 8 if self.level == 2 else
+                self.shark.sound.rewind()
+                self.shark.sound.loop()
                 
             if self.shark.inGame:
                 self.shark.display()
@@ -291,7 +367,6 @@ class Game():
                 
             # LEVEL, TIMER and SCORE
             textMode(CORNER)
-            textFont(font)
             fill(255)
             
             textAlign(RIGHT)
@@ -299,21 +374,38 @@ class Game():
             text("SCORE", self.w - 20, 40)
             
             textSize(22)
-            text(str(self.score), self.w - 20, 65)
-            
+            if self.multiPlayer:
+                count = 0
+                for s in self.network.scores:                    
+                    player = "YOU"
+                    if s != self.network.player:
+                        player = "P" + str(s)
+                        
+                    text(player + ": " + str(self.network.scores[s]), self.w - 20, 65 + count * 25)
+                    
+                    count += 1
+            else:
+                text(self.score, self.w - 20, 65)
+                
             textAlign(LEFT)
             textSize(30)
             text("LEVEL " + str(self.level), 20, 40)
             
             textSize(22)
             text(self.getTimer((datetime.datetime.now() - self.start).total_seconds()), 20, 65)
+       
+        elif self.screen == 10:
+            textAlign(CENTER)
+            textMode(CENTER)
+            textSize(40)
             
-            # I placed the mousePressed here instead of using mousePressed() function at the end
-            # cuz we need to check it every time the game updates
-            # if we use mousePressed() at the end, it'll trigger the function just once
-            if mousePressed:
-                mouseHandler()
-                
+            waitingTxt = "WAITING FOR OTHER PLAYERS TO JOIN..."
+            if self.network.serverFull:
+                waitingTxt = "SORRY, THE SERVER IS BUSY"
+            text(waitingTxt, self.w / 2, self.h / 2)
+            textSize(25)
+            text("Press ESC to exit", self.w / 2, (self.h / 2) + 30)
+            
         else:
             self.shark.sound.pause()
             self.gameOverAudio.play()
@@ -322,11 +414,13 @@ class Game():
             textMode(CENTER)
             textSize(70)
             text("GAME OVER", self.w / 2, self.h / 2)
-            textSize(25)
-            text("Press SPACE to restart", self.w / 2, (self.h / 2) + 50)
             
-            if self.keyHandler[32] == True:
-                self.newGame()
+            if not self.multiPlayer:
+                textSize(25)
+                text("Press SPACE to restart", self.w / 2, (self.h / 2) + 50)
+                
+                if self.keyHandler[32]:
+                    self.newGame()
         
     # to get the TIMER format (M:S)
     def getTimer(self, seconds):
@@ -348,8 +442,18 @@ class Game():
         
     # for the MainMenu
     def mainMenu(self):
-        pass
-
+        background(255)
+        imageMode(CENTER)
+        image(self.mainMenuImg, self.w / 2, self.h / 2, self.w, self.h)
+        
+        if self.keyHandler[83]:
+            self.screen = 1
+            self.start = datetime.datetime.now()
+            
+        elif self.keyHandler[77]:
+            self.multiPlayer = True
+            self.network = Network()
+            self.network.connect()
 
 class Background():
     def __init__(self, w, h):
@@ -376,9 +480,9 @@ class Background():
         x = 0
         for img in self.otherImages:
             if count == 1:
-                x = self.xShift//3
+                x = self.xShift // 3
             elif count == 2:
-                x = self.xShift//2
+                x = self.xShift // 2
             else:
                 x = self.xShift        
             
@@ -396,39 +500,32 @@ game = Game(WIDTH, HEIGHT)
 
 def setup():
     size(WIDTH, HEIGHT)
+    textFont(font)
 
 def draw():
     background(game.bg.bgImage)
     game.update()
     
-#i was thinking press enter if you lose or win(to go to the next level or something)
 def keyPressed():
     if keyCode == 32: # and game.nemo.alive == False: # SPACEBAR
         game.keyHandler[32] = True
         
-    if keyCode == 13: # ENTER
-        game.keyHandler[13] = True
+    elif keyCode == 10: # ENTER
+        game.keyHandler[10] = True
     
-    if keyCode == 27: # ESC
-        exit()
-        """end game? change game.alive to False basically 
-        we don't have to use it it's just an option"""
+    elif keyCode == 83: # S or s
+        game.keyHandler[83] = True
+        
+    elif keyCode == 77: # M or m
+        game.keyHandler[77] = True
+        
+    elif keyCode == 27: # ESC
+        sys.exit()
 
-# this is the main function that handles nemo's movement
 def mouseHandler():
-    
-    # addition: rotate() fish while moving towards the diagonals
-    
-    # to get the center co-ordinates of our nemo instead of getting top left coordinates
     playerCenterX, playerCenterY = game.nemo.getCenterCoordinates()
     
-    # posX and posY increment values
-    # increment will be the speed of Fish
-    # that's why I've used speed inside the Fish class
-    # we can declare different speed for our nemo and other individual enemies as well as the shark
     increment = [0, 0]
-    
-    # if the mouse position is more than half of the nemo's size, we move Nemo, else it doesn't move
     if (mouseY - playerCenterY) < (-1) * (game.nemo.size / 2):
         increment[1] = -(game.nemo.speed)
         
@@ -441,7 +538,6 @@ def mouseHandler():
     elif (mouseX - playerCenterX) > (game.nemo.size / 2):
         increment[0] = game.nemo.speed
         
-    # checking if the player is within the game window
     if game.nemo.posX + increment[0] < (game.w - game.nemo.size / 2) and game.nemo.posX + increment[0] > game.nemo.size / 2:
         game.nemo.posX += increment[0]
         
