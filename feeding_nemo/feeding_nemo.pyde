@@ -543,14 +543,15 @@ class Game():
             textSize(22)
             text(self.score, self.w - 20, 65)
                  
-            textAlign(CENTER)
-            textMode(CENTER)
-            textSize(70)
-            text("GAME OVER", self.w / 2, self.h / 2)
+            img = loadImage(path + "/images/gameOver.png")
+            imageMode(CORNER)
+            image(img,0,0)
             
             if not self.multiPlayer:
-                textSize(25)
-                text("Press SPACE to restart", self.w / 2, (self.h / 2) + 50)
+                textAlign(CENTER)
+                textMode(CENTER)
+                textSize(30)
+                text("Press SPACE to restart", self.w / 2, (self.h / 2) + 100)
                 
                 if self.keyHandler[32]:
                     self.__newGame()
