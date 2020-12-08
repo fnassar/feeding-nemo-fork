@@ -83,7 +83,11 @@ def getScores():
     return "[" + str(d) + "]"
 
 def disconnect(con, addr):
-    CONNECTIONS.remove(con)
+    if (threading.activeCount() - 2) == 0:
+        global SCORES
+        SCORES = {1: "000", 2: "000", 3: "000"}
+        CONNECTIONS.clear()
+
     print("[DISCONNECTED]", addr, "_________ [NOW ACTIVE]", threading.activeCount() - 2)
 
 def transmitData(msg):
