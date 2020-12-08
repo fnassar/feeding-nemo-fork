@@ -156,7 +156,7 @@ class Shark(Enemy):
                 game.score += 10
                 game.preys.remove(self)
 
-        self.increment[0] = -self.speed * 2
+        self.increment[0] = -self.speed * 4
 
         self.increment[1] = 0
         
@@ -232,7 +232,7 @@ class Game():
         for i in range(5):
             self.predators.append(Enemy(random.randint(300, self.w - 100), random.randint(50, self.h - 50), self.nemo.size * 1.5, "predator.png", random.uniform(1.5, 2.2), 9))
 
-        self.shark = Shark(self.w, random.randint(50, self.h - 50), self.nemo.size * 4, "shark.png", random.uniform(1.5, 2.2), 8 if self.level == 2 else 6)
+        self.shark = Shark(self.w, random.randint(50, self.h - 50), self.nemo.size * 4, "shark.png", random.uniform(1.5, 2.2), 6)# 8 if self.level == 2 else
         
         global gameStarted
         if not gameStarted:
@@ -282,7 +282,7 @@ class Game():
             
             elif self.shark.posX <= 0:
                 self.shark.inGame = False
-                self.shark = Shark(self.w, random.randint(50, self.h - 50), self.nemo.size * 3, "shark.png", random.uniform(1.5, 2.2), 8 if self.level == 2 else 6)
+                self.shark = Shark(self.w, random.randint(50, self.h - 50), self.nemo.size * 3, "shark.png", random.uniform(1.5, 2.2), 6)# 8 if self.level == 2 else
                 
             if self.shark.inGame:
                 self.shark.display()
