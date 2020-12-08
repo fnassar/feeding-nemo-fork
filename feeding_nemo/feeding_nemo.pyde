@@ -365,7 +365,7 @@ class Game():
         self.nemo = Player(200, 200, 90 if state == 1 else 110, "nemo.png", 4)
         
         # preys and predators
-        fishCount = [6, 5, 5, 6, 6]
+        fishCount = [6, 5, 4, 6, 6]
         self.preys = []
         for i in range(15 if state == 1 else 10):
             fish = random.randint(0, 4)
@@ -373,7 +373,7 @@ class Game():
                               
         self.predators = []
         for i in range(5):
-            fish = Enemy(random.randint(300, self.w - 100), random.randint(50, self.h - 50), self.nemo.size * 1.5 / (1 if state == 1 else 2), "predator.png", random.uniform(1.5, 2.2), 9)
+            fish = Enemy(random.randint(300, self.w - 100), random.randint(50, self.h - 50), self.nemo.size * 1.5 / (1 if state == 1 else 2), "predator.png", random.uniform(1.5, 2.2), 5)
             if state == 1:
                 self.predators.append(fish)
             else:
@@ -381,7 +381,7 @@ class Game():
         
         if not state == 1:
             for i in range(3):
-                self.predators.append(Enemy(random.randint(300, self.w - 100), random.randint(50, self.h - 50), self.nemo.size * 1.5, "predator2.png", random.uniform(1.5, 2.2), 8))
+                self.predators.append(Enemy(random.randint(300, self.w - 100), random.randint(50, self.h - 50), self.nemo.size * 1.5, "predator2.png", random.uniform(1.5, 2.2), 9))
 
         # the shark that enters every 30 seconds
         self.shark = Shark(self.w, random.randint(50, self.h - 50), self.nemo.size * 3, "shark.png", random.uniform(1.5, 2.2), 6)
