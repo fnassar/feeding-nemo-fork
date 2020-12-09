@@ -536,17 +536,17 @@ class Game():
             self.shark.sound.pause()
             self.__gameOverAudio.play()
             
+            img = loadImage(path + "/images/gameOver.png")
+            imageMode(CORNER)
+            image(img, 0, 0)
+            
             textAlign(RIGHT)
             textMode(CORNER)
             textSize(30)
             text("YOUR SCORE", self.w - 20, 40)
             textSize(22)
             text(self.score, self.w - 20, 65)
-                 
-            img = loadImage(path + "/images/gameOver.png")
-            imageMode(CORNER)
-            image(img, 0, 0)
-            
+                         
             if not self.multiPlayer:
                 textAlign(CENTER)
                 textMode(CENTER)
