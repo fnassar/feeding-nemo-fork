@@ -1,12 +1,4 @@
 '''
-self.h = float(self.size)*float(self._img.height/float(self._img.width/self.imageCount))
-self.radius = (float(self.h/2)*float(self.size/2))/math.sqrt((float(self.h/2)*math.sin(self.theta))**2+(float(self.size/2)*math.cos(self.theta))**2)
-
-self.theta = math.atan(math.fabs(self.posY-game.nemo.posY)/(math.fabs(self.posX-game.nemo.posX)))
-game.nemo.theta = self.theta 
-if dist(self.posX, self.posY, game.nemo.posX, game.nemo.posY) < self.radius + game.nemo.radius:'''
-
-'''
 Feeding Nemo
 Final Project - Team Pink (#4)
 Intro to CS, Fall 2020
