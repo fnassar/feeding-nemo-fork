@@ -1,4 +1,12 @@
 '''
+self.h = float(self.size)*float(self._img.height/float(self._img.width/self.imageCount))
+self.radius = (float(self.h/2)*float(self.size/2))/math.sqrt((float(self.h/2)*math.sin(self.theta))**2+(float(self.size/2)*math.cos(self.theta))**2)
+
+self.theta = math.atan(math.fabs(self.posY-game.nemo.posY)/(math.fabs(self.posX-game.nemo.posX)))
+game.nemo.theta = self.theta 
+if dist(self.posX, self.posY, game.nemo.posX, game.nemo.posY) < self.radius + game.nemo.radius:'''
+
+'''
 Feeding Nemo
 Final Project - Team Pink (#4)
 Intro to CS, Fall 2020
@@ -112,7 +120,7 @@ class Network():
 # every character is a Fish, so this is the super class
 # which will be inherited by the Player[Nemo], Preys, Predators, and Shark [Enemy]
 class Fish():
-    def __init__(self, posX, posY, size, img, speed):
+    def __init__(self, posX, posY, size, img, speed,imageCount):
         # character's position and rotation
         self.posX = posX
         self.posY = posY
@@ -130,7 +138,22 @@ class Fish():
         
         # start index for cropping the image
         self._cropStart = random.randint(0, 4)
-    
+        
+        self.imageCount = imageCount                                                                     # new variable
+        
+        # individual size of the character in sprite image
+        self.singleSize = int(self._img.width / self.imageCount)                                         # new variable(added self. and changed location to __init__())
+        
+        # character ratio
+        self.ratio = float(self._img.height) / float(self.singleSize)                                    # new variable(added self. and changed location to __init__())
+        
+        # this is for pos radius(ellipse)
+        self.h = float(self.size) * float(self.ratio)                                                           # new variable
+        
+        self.theta = 0                                                                                   # new variable
+        
+        self.radius = 0                                                                                  # new variable
+        
     # method to render character on screen
     def display(self):
         self._update()
@@ -142,11 +165,6 @@ class Fish():
             # math.atan2() to get angle in radians
             self.rotation = math.atan2((mouseY - playerCenterY), (mouseX - playerCenterX))
 
-        # individual size of the character in sprite image
-        singleSize = int(self._img.width / self.imageCount)
-        
-        # character ratio
-        ratio = float(self._img.height) / float(singleSize)
         
         # updating the crop index for image
         if frameCount % 5 == 0 or frameCount == 1:
@@ -168,10 +186,10 @@ class Fish():
         
         if self.direction == RIGHT:
             scale(1, 1)
-            image(self._img, 0, 0, self.size, self.size * ratio, self._cropStart * singleSize, 0, (self._cropStart * singleSize + singleSize), self._img.height)
+            image(self._img, 0, 0, self.size, self.size * self.ratio, self._cropStart * self.singleSize, 0, (self._cropStart * self.singleSize + self.singleSize), self._img.height)
         else:
             scale(-1, 1)
-            image(self._img, 0, 0, -self.size, self.size * ratio, (self._cropStart * singleSize + singleSize), self._img.height, self._cropStart * singleSize, 0)
+            image(self._img, 0, 0, -self.size, self.size * self.ratio, (self._cropStart * self.singleSize + self.singleSize), self._img.height, self._cropStart * self.singleSize, 0)
             
         popMatrix()
         
@@ -181,16 +199,15 @@ class Fish():
 
 # main player of the game - Nemo
 class Player(Fish):
-    def __init__(self, posX, posY, size, img, speed):
-        Fish.__init__(self, posX, posY, size, img, speed)
+    def __init__(self, posX, posY, size, img, speed,imageCount):
+        Fish.__init__(self, posX, posY, size, img, speed,imageCount)
         
-        self.imageCount = 8
         self.alive = True
         
         # audio
         self.eat = audio.loadFile(path + "/audio/nemo_eat.mp3")
         self.tokenEat = audio.loadFile(path + "/audio/token.mp3")
-    
+            
     # method to update the player movements
     def _update(self):
         if mousePressed:
@@ -199,8 +216,7 @@ class Player(Fish):
 # class for Preys, Predators and the Shark (all are enemies)
 class Enemy(Fish):
     def __init__(self, posX, posY, size, img, speed, imageCount):
-        Fish.__init__(self, posX, posY, size, img, speed)
-        self.imageCount = imageCount
+        Fish.__init__(self, posX, posY, size, img, speed, imageCount)
         
         # for incrementing the position
         self.__increment = [self.speed, self.speed]
@@ -226,7 +242,15 @@ class Enemy(Fish):
     
     # to check if the enemy eats Nemo or is eaten by Nemo
     def _check(self):
-        if dist(self.posX, self.posY, game.nemo.posX, game.nemo.posY) < self.size / 2 + game.nemo.size / 3:
+        self.theta = math.atan((self.posY-game.nemo.posY)/((self.posX-game.nemo.posX)))
+        # new variable this is not a new variable but if you could make this better please do idk gow else and putting it in the nemo __init__ doesn't update so :/
+        global game
+        game.nemo.radius = (float(game.nemo.h/2)*float(game.nemo.size/2))/math.sqrt((float(game.nemo.h/2)*math.cos(self.theta))**2+(float(game.nemo.size/2)*math.sin(self.theta))**2)
+        self.radius = (float(self.h/2)*float(self.size/2))/math.sqrt((float(self.h/2)*math.cos(self.theta))**2+(float(self.size/2)*math.sin(self.theta))**2)
+        print(self.radius, game.nemo.radius, self.size/2,  game.nemo.size/2, self.h/2, game.nemo.h/2)
+        # print("height", self.h, game.nemo.h)
+        # print("y", self.posY, game.nemo.posY,"x", self.posX, game.nemo.posX)
+        if dist(self.posX, self.posY, game.nemo.posX, game.nemo.posY) < self.radius + game.nemo.radius:
             if self.size > game.nemo.size:
                 game.nemo.alive = False
             else:
@@ -362,7 +386,7 @@ class Game():
     def __addCharacters(self, state):
         
         # the main player - Nemo
-        self.nemo = Player(200, 200, 90 if state == 1 else 110, "nemo.png", 4)
+        self.nemo = Player(200, 200, 90 if state == 1 else 110, "nemo.png", 4, 8)
         
         # preys and predators
         fishCount = [6, 5, 4, 6, 6]
